@@ -1,0 +1,10 @@
+[workspace]
+resolver = "1"
+members = ["blur_plugin", "image_processor", "mirror_plugin"]
+
+[workspace.dependencies]
+clap = { version = "4", features = ["derive", "string"] }
+thiserror = "2"
+image = "0"
+anyhow = "1"
+libloading = "0"
