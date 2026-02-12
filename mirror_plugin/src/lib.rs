@@ -4,7 +4,21 @@
 //! to blur PNG image by radius and iterations
 use std::ffi::{CStr, c_char};
 
+use serde::{Deserialize, Serialize};
+
 const PIXEL_SIZE: usize = 4;
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct Params {
+    pub vertical: bool,
+    pub horizontal: bool,
+}
+
+impl Params {
+    fn parse_json(json: String) -> Self {
+        serde_json::from_str(&json).expect("cannot read params")
+    }
+}
 
 #[unsafe(no_mangle)]
 extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params: *const c_char) {
@@ -21,25 +35,13 @@ extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params:
     let size = width * height * PIXEL_SIZE;
     let data = unsafe { std::slice::from_raw_parts_mut(rgba_data, size) };
 
-    let (v, h) = parse_params(params_str);
-    if v {
+    let params = Params::parse_json(params_str);
+    if params.vertical {
         flip_vertical(width, height, data);
     }
-    if h {
+    if params.horizontal {
         flip_horizontal(width, height, data);
     }
-}
-
-fn parse_params(params: String) -> (bool, bool) {
-    let (mut v, mut h) = (false, false);
-    for line in params.lines() {
-        if line.starts_with("V") {
-            v = true;
-        } else if line.starts_with("H") {
-            h = true;
-        }
-    }
-    (v, h)
 }
 
 fn flip_horizontal(width: usize, height: usize, rgba: &mut [u8]) {

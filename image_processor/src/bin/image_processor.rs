@@ -37,16 +37,16 @@ fn read_params(params: &Path) -> String {
 
 fn plugin_path(plugin: String, path: &mut PathBuf) {
     let ext = if cfg!(target_os = "windows") {
-        ".dll"
+        "dll"
     } else if cfg!(target_os = "linux") {
-        ".so"
+        "so"
     } else if cfg!(target_os = "macos") {
-        ".dylib"
+        "dylib"
     } else {
         eprintln!("Unsupported OS");
         exit(-1);
     };
-    path.push(&format!("{}{}", plugin, ext));
+    path.push(format!("{}.{}", plugin, ext));
 }
 
 fn main() {

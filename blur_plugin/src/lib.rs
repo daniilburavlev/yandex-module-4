@@ -4,7 +4,21 @@
 //! to flip PNG image vertically and horizontally
 use std::{ffi::CStr, os::raw::c_char};
 
+use serde::Deserialize;
+
 const PIXEL_SIZE: i32 = 4;
+
+#[derive(Deserialize)]
+struct Params {
+    pub radius: u32,
+    pub iterations: usize,
+}
+
+impl Params {
+    fn parse_json(json: String) -> Self {
+        serde_json::from_str(&json).expect("cannot parse params")
+    }
+}
 
 #[unsafe(no_mangle)]
 extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params: *const c_char) {
@@ -16,21 +30,22 @@ extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params:
     } else {
         String::new()
     };
-    let (r, i) = parse_params(params_str);
+    let params = Params::parse_json(params_str);
+    let radius = params.radius as i32;
 
     let width = width as i32;
     let height = height as i32;
 
     let size = (width * height * PIXEL_SIZE) as usize;
 
-    for _ in 0..i {
+    for _ in 0..params.iterations {
         let mut temp_buffer = vec![0u8; size];
         unsafe {
             std::ptr::copy_nonoverlapping(rgba_data, temp_buffer.as_mut_ptr(), size);
         }
         let dst = unsafe { std::slice::from_raw_parts_mut(rgba_data, size) };
 
-        box_blur(width, height, &temp_buffer, dst, r);
+        box_blur(width, height, &temp_buffer, dst, radius);
     }
 }
 
@@ -40,23 +55,6 @@ fn box_blur(width: i32, height: i32, temp_buffer: &[u8], dst: &mut [u8], r: i32)
             blur_pixel(x, y, width, height, temp_buffer, dst, r);
         }
     }
-}
-
-fn parse_params(params: String) -> (i32, usize) {
-    let (mut r, mut i) = (1, 0);
-    for line in params.lines() {
-        if line.starts_with("radius") {
-            let error = "cannot get radius from params";
-            let line: Vec<&str> = line.splitn(2, " ").collect();
-            r = line.get(1).expect(error).parse().expect(error);
-        }
-        if line.starts_with("iterations") {
-            let error = "cannot get iterations from params";
-            let line: Vec<&str> = line.splitn(2, " ").collect();
-            i = line.get(1).expect(error).parse().expect(error);
-        }
-    }
-    (r, i)
 }
 
 fn blur_pixel(x: i32, y: i32, width: i32, height: i32, src: &[u8], dst: &mut [u8], radius: i32) {
