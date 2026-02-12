@@ -35,9 +35,23 @@ fn read_params(params: &Path) -> String {
     fs::read_to_string(params).expect("cannot read params, check path of file format")
 }
 
+fn plugin_path(plugin: String, path: &mut PathBuf) {
+    let ext = if cfg!(target_os = "windows") {
+        ".dll"
+    } else if cfg!(target_os = "linux") {
+        ".so"
+    } else if cfg!(target_os = "macos") {
+        ".dylib"
+    } else {
+        eprintln!("Unsupported OS");
+        exit(-1);
+    };
+    path.push(&format!("{}{}", plugin, ext));
+}
+
 fn main() {
     let mut cli = Cli::parse();
-    cli.plugin_path.push(cli.plugin);
+    plugin_path(cli.plugin, &mut cli.plugin_path);
     let params = read_params(&cli.params);
     if let Err(e) = process_image(&cli.input, &cli.output, &cli.plugin_path, params) {
         eprintln!("{}", e);
