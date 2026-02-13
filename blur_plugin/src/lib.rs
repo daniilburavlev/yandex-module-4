@@ -4,11 +4,11 @@
 //! to flip PNG image vertically and horizontally
 use std::{ffi::CStr, os::raw::c_char};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 const PIXEL_SIZE: i32 = 4;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct Params {
     pub radius: u32,
     pub iterations: usize,
@@ -92,5 +92,31 @@ fn blur_pixel(x: i32, y: i32, width: i32, height: i32, src: &[u8], dst: &mut [u8
         dst[idx + 1] = (sum_g / count) as u8;
         dst[idx + 2] = (sum_b / count) as u8;
         dst[idx + 3] = (sum_a / count) as u8;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::CString;
+
+    use super::*;
+
+    #[test]
+    fn blur() {
+        let width = 1;
+        let height = 3;
+
+        let params = Params {
+            radius: 2,
+            iterations: 1,
+        };
+        let params = serde_json::to_string(&params).unwrap();
+        let params_cstr = CString::new(params.as_str()).unwrap();
+
+        let mut original = vec![255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255];
+        let expected = vec![85, 85, 85, 255, 85, 85, 85, 255, 85, 85, 85, 255];
+        process_image(width, height, original.as_mut_ptr(), params_cstr.as_ptr());
+        assert_eq!(original, expected);
+        println!("{:?}", original);
     }
 }
