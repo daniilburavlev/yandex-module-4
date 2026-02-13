@@ -20,14 +20,16 @@ pub(crate) fn apply_plugin(
     let height = img.height();
     let params_cstr = CString::new(params.as_str())
         .map_err(|_| ProcessorError::FFI("cannot convert params to c_str".to_string()))?;
-    (plugin.process_image)(width, height, img.as_mut_ptr(), params_cstr.as_ptr());
+    unsafe {
+        (plugin.process_image)(width, height, img.as_mut_ptr(), params_cstr.as_ptr());
+    }
     Ok(())
 }
 
 struct ImgProcessPlugin<'a> {
     pub process_image: Symbol<
         'a,
-        extern "C" fn(width: u32, height: u32, rgba_data: *mut u8, params: *const c_char),
+        unsafe extern "C" fn(width: u32, height: u32, rgba_data: *mut u8, params: *const c_char),
     >,
 }
 
