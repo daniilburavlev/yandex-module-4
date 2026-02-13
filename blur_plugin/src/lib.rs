@@ -31,13 +31,23 @@ extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params:
         String::new()
     };
     let params = Params::parse_json(params_str);
-    let radius = params.radius as i32;
-
-    let width = width as i32;
-    let height = height as i32;
-
-    let size = (width * height * PIXEL_SIZE) as usize;
-
+    let Ok(radius) = params.radius.try_into() else {
+        eprintln!("RADIUS overflow");
+        return;
+    };
+    let Ok(width) = width.try_into() else {
+        eprintln!("WIDTH overflow");
+        return;
+    };
+    let Ok(height) = height.try_into() else {
+        eprintln!("HEIGHT overflow");
+        return;
+    };
+    let Some(size) = get_size(width, height) else {
+        eprintln!("WIDTHxHEIGHT overflow");
+        return;
+    };
+    let size = size as usize;
     for _ in 0..params.iterations {
         let mut temp_buffer = vec![0u8; size];
         unsafe {
@@ -95,6 +105,10 @@ fn blur_pixel(x: i32, y: i32, width: i32, height: i32, src: &[u8], dst: &mut [u8
     }
 }
 
+fn get_size(width: i32, height: i32) -> Option<i32> {
+    width.checked_mul(height)?.checked_mul(PIXEL_SIZE)
+}
+
 #[cfg(test)]
 mod tests {
     use std::ffi::CString;
@@ -118,5 +132,13 @@ mod tests {
         process_image(width, height, original.as_mut_ptr(), params_cstr.as_ptr());
         assert_eq!(original, expected);
         println!("{:?}", original);
+    }
+
+    #[test]
+    fn overflow() {
+        let width = u32::MAX / 2;
+        let height = 1;
+        let mut buffer = vec![0u8; width as usize * height as usize * 4];
+        process_image(width, height, buffer.as_mut_ptr(), std::ptr::null());
     }
 }
