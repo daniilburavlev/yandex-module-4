@@ -27,8 +27,8 @@ cargo run \
   --bin image_processor \
   -- --input image.png \
   --output output.png \
-  --params blur_plugin/params.txt -- \
-  plugin libblur_plugin.dylib
+  --params blur_plugin/params.json \
+  --plugin libblur_plugin
 ```
 ```
 ```

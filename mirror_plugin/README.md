@@ -27,8 +27,8 @@ cargo run \
   --bin image_processor \
   -- --input image.png \
   --output output.png \
-  --params mirror_plugin/params.txt -- \
-  plugin libmirror_plugin.dylib
+  --params mirror_plugin/params.json \
+  --plugin libmirror_plugin
 ```
 ```
 ```

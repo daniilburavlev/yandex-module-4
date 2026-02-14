@@ -1,7 +1,7 @@
 #![deny(unreachable_pub)]
 #![warn(missing_docs)]
-//! The `mirror_plugin` crate provides ability
-//! to flip PNG image vertically and horizontally
+//! The `blur_plugin` crate provides ability
+//! to blur image
 use std::{ffi::CStr, os::raw::c_char};
 
 use serde::{Deserialize, Serialize};
@@ -21,9 +21,14 @@ impl Params {
 }
 
 #[unsafe(no_mangle)]
-extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params: *const c_char) {
+extern "C" fn process_image(
+    width: u32,
+    height: u32,
+    rgba_data: *mut u8,
+    params: *const c_char,
+) -> i32 {
     if rgba_data.is_null() || params.is_null() {
-        return;
+        return -1;
     }
     let params_str = if !params.is_null() {
         unsafe { CStr::from_ptr(params).to_string_lossy().to_string() }
@@ -32,20 +37,16 @@ extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params:
     };
     let params = Params::parse_json(params_str);
     let Ok(radius) = params.radius.try_into() else {
-        eprintln!("RADIUS overflow");
-        return;
+        return -1;
     };
     let Ok(width) = width.try_into() else {
-        eprintln!("WIDTH overflow");
-        return;
+        return -1;
     };
     let Ok(height) = height.try_into() else {
-        eprintln!("HEIGHT overflow");
-        return;
+        return -1;
     };
     let Some(size) = get_size(width, height) else {
-        eprintln!("WIDTHxHEIGHT overflow");
-        return;
+        return -1;
     };
     let size = size as usize;
     for _ in 0..params.iterations {
@@ -57,6 +58,7 @@ extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params:
 
         box_blur(width, height, &temp_buffer, dst, radius);
     }
+    0
 }
 
 fn box_blur(width: i32, height: i32, temp_buffer: &[u8], dst: &mut [u8], r: i32) {
@@ -139,6 +141,7 @@ mod tests {
         let width = u32::MAX / 2;
         let height = 1;
         let mut buffer = vec![0u8; width as usize * height as usize * 4];
-        process_image(width, height, buffer.as_mut_ptr(), std::ptr::null());
+        let result = process_image(width, height, buffer.as_mut_ptr(), std::ptr::null());
+        assert_eq!(result, -1);
     }
 }

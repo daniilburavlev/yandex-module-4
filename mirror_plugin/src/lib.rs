@@ -23,10 +23,14 @@ impl Params {
 const OVERFLOW_ERROR: &str = "WIDTH x HEIGHT overflow";
 
 #[unsafe(no_mangle)]
-extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params: *const c_char) {
+extern "C" fn process_image(
+    width: u32,
+    height: u32,
+    rgba_data: *mut u8,
+    params: *const c_char,
+) -> i32 {
     if rgba_data.is_null() || width == 0 || height == 0 {
-        eprintln!("Empty image input");
-        return;
+        return -1;
     }
     let params_str = if !params.is_null() {
         unsafe { CStr::from_ptr(params).to_string_lossy().to_string() }
@@ -34,8 +38,7 @@ extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params:
         String::new()
     };
     let Some(size) = get_size(width, height) else {
-        eprintln!("{}", OVERFLOW_ERROR);
-        return;
+        return -1;
     };
     let data = unsafe { std::slice::from_raw_parts_mut(rgba_data, size as usize) };
 
@@ -46,6 +49,7 @@ extern "C" fn process_image(width: u32, height: u32, rgba_data: *mut u8, params:
     if params.horizontal {
         flip_horizontal(width, height, data).expect(OVERFLOW_ERROR);
     }
+    0
 }
 
 fn flip_horizontal(width: u32, height: u32, rgba: &mut [u8]) -> Option<()> {
@@ -101,7 +105,8 @@ mod tests {
         let height = u32::MAX;
 
         let mut buffer: Vec<u8> = Vec::new();
-        process_image(width, height, buffer.as_mut_ptr(), std::ptr::null());
+        let result = process_image(width, height, buffer.as_mut_ptr(), std::ptr::null());
+        assert_eq!(-1, result);
     }
 
     #[test]
